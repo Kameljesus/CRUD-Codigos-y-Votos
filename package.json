@@ -1,0 +1,23 @@
+{
+  "name": "crud-codigos-y-votos",
+  "version": "1.0.0",
+  "description": "Challenge N° 7 de CodePRO 2.0.",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Kameljesus/CRUD-Codigos-y-Votos.git"
+  },
+  "author": "Jesus Kamel",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Kameljesus/CRUD-Codigos-y-Votos/issues"
+  },
+  "homepage": "https://github.com/Kameljesus/CRUD-Codigos-y-Votos#readme",
+  "dependencies": {
+    "ejs": "^3.1.10",
+    "express": "^5.1.0"
+  }
+}

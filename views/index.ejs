@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Learn It, Love It - Votaciones</title>
+  <style>
+    /* Estilos básicos para visualizar mejor */
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    h2 { margin-top: 30px; }
+    .tema { border: 1px solid #ccc; padding: 10px; margin: 10px 0; }
+    .subtema { margin-left: 20px; }
+    button { margin-left: 10px; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+  <h1>Learn It, Love It - Votaciones</h1>
+
+<!-- Sección de Bartending -->
+<h2>Bartending</h2>
+<div id="bartending">
+  <% infoTemas.bartending.forEach(subtema => { %>
+    <div class="tema" data-id="<%= subtema.id %>">
+      <strong><%= subtema.titulo %></strong> - Votos: <span class="votos"><%= subtema.votos %></span>
+      <!-- Botón para votar -->
+      <button class="votar">Votar</button>
+    </div>
+  <% }) %>
+</div>
+
+  <hr>
+
+  <!-- Sección de Videojuegos -->
+  <h2>Videojuegos</h2>
+  <div id="videojuegos">
+    <% infoTemas.videojuegos.forEach(subtema => { %>
+      <div class="tema" data-id="<%= subtema.id %>">
+        <strong><%= subtema.titulo %></strong> - Votos: <span class="votos"><%= subtema.votos %></span>
+        <button class="votar-videojuegos">Votar</button>
+      </div>
+    <% }) %>
+  </div>
+
+  <hr>
+
+  <!-- Sección de Cocina -->
+  <h2>Cocina</h2>
+  <div id="cocina">
+    <% infoTemas.cocina.forEach(subtema => { %>
+      <div class="tema" data-id="<%= subtema.id %>">
+        <strong><%= subtema.titulo %></strong> - Votos: <span class="votos"><%= subtema.votos %></span>
+        <button class="votar-cocina">Votar</button>
+      </div>
+    <% }) %>
+  </div>
+
+  <script>
+    // Función genérica para manejar votaciones
+    function handleVoting(containerId, routePrefix, buttonClass) {
+      const container = document.getElementById(containerId);
+
+      // Escuchamos clicks en todo el contenedor
+      container.addEventListener('click', async (e) => {
+        if (!e.target.classList.contains(buttonClass)) return;
+
+        const temaDiv = e.target.closest('.tema'); // Obtenemos el div del subtema
+        const id = temaDiv.dataset.id;
+
+        try {
+          // Llamamos al endpoint PATCH /:id/votar usando fetch
+          const res = await fetch(`/api/${routePrefix}/${id}/votar`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' }
+          });
+
+          if (!res.ok) throw new Error('Error al votar');
+
+          const data = await res.json();
+
+          // Actualizamos el número de votos en el HTML
+          temaDiv.querySelector('.votos').textContent = data.votos;
+
+        } catch (err) {
+          console.error(err);
+        }
+      });
+    }
+
+    // Configuramos votaciones para cada sección
+    handleVoting('bartending', 'bartending', 'votar');
+    handleVoting('videojuegos', 'videojuegos', 'votar-videojuegos');
+    handleVoting('cocina', 'cocina', 'votar-cocina');
+  </script>
+
+</body>
+</html>
