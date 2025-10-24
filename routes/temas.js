@@ -8,7 +8,7 @@ const express = require('express');
 const routerTemas = express.Router();
 
 // Importamos los datos de los temas
-const { infoTemas } = require('../datos/db.js');
+const db = require('../datos/db'); // Importamos la conexión a SQLite
 
 
 // Middleware para parsear JSON en el body de las solicitudes POST/PUT/PATCH
@@ -17,11 +17,24 @@ routerTemas.use(express.json());
 
 /**
  * GET /
- * Devuelve todos los temas
- * Ejemplo: GET / → devuelve todos los temas con sus votos
+ * Devuelve todos los temas con sus votos, ordenados de mayor a menor
+ * Ejemplo: GET / → devuelve [{ titulo: '...', votos: 10 }, ...]
  */
 routerTemas.get('/', (req, res) => {
-  res.json(infoTemas);
+  const query = `
+    SELECT titulo, votos 
+    FROM temas 
+    ORDER BY votos DESC
+  `;
+
+  db.all(query, (err, rows) => {
+    if (err) {
+      console.error('❌ Error al obtener los temas:', err.message);
+      return res.status(500).json({ error: 'Error al obtener los temas' });
+    }
+
+    res.json(rows); // Devuelve los resultados como JSON
+  });
 });
 
 
@@ -31,20 +44,25 @@ routerTemas.get('/', (req, res) => {
  * Ejemplo: GET /bartending → devuelve { titulo, votos }
  */
 routerTemas.get('/:tema', (req, res) => {
-  const nombreTema = req.params.tema.toLowerCase();
+  const { tema } = req.params;
 
-  const temaEncontrado = Object.values(infoTemas).find(
-    tema => tema.titulo.toLowerCase() === nombreTema
-  );
+  const query = `
+    SELECT titulo, votos 
+    FROM temas 
+    WHERE titulo = ?
+  `;
 
-  if (!temaEncontrado) {
-    return res.status(404).send(`El tema "${nombreTema}" no existe`);
-  }
+  db.get(query, [tema], (err, row) => {
+    if (err) {
+      console.error('❌ Error al obtener el tema:', err.message);
+      return res.status(500).json({ error: 'Error al obtener el tema' });
+    }
 
-  res.json({
-    id: temaEncontrado.id,
-    titulo: temaEncontrado.titulo,
-    votos: temaEncontrado.votos
+    if (!row) {
+      return res.status(404).json({ error: `El tema "${tema}" no existe.` });
+    }
+
+    res.json(row); // Devuelve el tema encontrado
   });
 });
 
@@ -52,27 +70,59 @@ routerTemas.get('/:tema', (req, res) => {
 /**
  * POST /
  * Crea un tema nuevo
+ * Ejemplo: POST / con body { "tituloTema": "Bartending" } 
+ * Devuelve: { mensaje: '✅ Tema creado exitosamente', tema: { id, titulo, votos } }
  */
 routerTemas.post('/', (req, res) => {
   const { tituloTema } = req.body;
 
-  if (!tituloTema) return res.status(400).send('Se necesita un título para el tema');
-  if (infoTemas[tituloTema.toLowerCase()]) {
-    return res.status(400).send('El tema ya existe');
+  // 1️⃣ Validamos que se haya enviado el título
+  if (!tituloTema) {
+    return res.status(400).send('Se necesita un título para el tema');
   }
 
-  const id = Object.keys(infoTemas).length + 1;
+  // 2️⃣ Convertimos el título a minúsculas (normalización)
+  const tituloNormalizado = tituloTema.toLowerCase();
 
-  infoTemas[tituloTema.toLowerCase()] = {
-    id,
-    titulo: tituloTema,
-    votos: 0,
-    subtemas: []
-  };
+  // 3️⃣ Verificamos si el tema ya existe en la base de datos
+  const checkQuery = `
+    SELECT * 
+    FROM temas 
+    WHERE LOWER(titulo) = ?
+  `;
 
-  res.status(201).json({
-    mensaje: 'Tema creado',
-    tema: infoTemas[tituloTema.toLowerCase()]
+  db.get(checkQuery, [tituloNormalizado], (err, row) => {
+    if (err) {
+      console.error('❌ Error al verificar el tema:', err.message);
+      return res.status(500).json({ error: 'Error al verificar el tema' });
+    }
+
+    if (row) {
+      return res.status(400).send('El tema ya existe');
+    }
+
+    // 4️⃣ Insertamos el nuevo tema (los votos inician en 0)
+    const insertQuery = `
+      INSERT INTO temas (titulo, votos)
+      VALUES (?, 0)
+    `;
+
+    db.run(insertQuery, [tituloNormalizado], function (err) {
+      if (err) {
+        console.error('❌ Error al crear el tema:', err.message);
+        return res.status(500).json({ error: 'Error al crear el tema' });
+      }
+
+      // 5️⃣ Devolvemos el nuevo tema creado
+      res.status(201).json({
+        mensaje: '✅ Tema creado exitosamente',
+        tema: {
+          id: this.lastID,         // ID autogenerado por SQLite
+          titulo: tituloNormalizado,
+          votos: 0
+        }
+      });
+    });
   });
 });
 
@@ -80,23 +130,86 @@ routerTemas.post('/', (req, res) => {
 /**
  * PUT /:tema
  * Actualiza los votos o el título de un tema existente
+ * Ejemplo: PUT /bartending con body { "tituloTema": "Mixologia", "votos": 10 }
+ * Devuelve: { mensaje: '✅ Tema actualizado', tema: { id, titulo, votos } }
  */
 routerTemas.put('/:tema', (req, res) => {
-  const { tema } = req.params;
+  const { tema } = req.params; // nombre del tema actual
   const { tituloTema, votos } = req.body;
 
-  if (!infoTemas[tema]) {
-    return res.status(404).send(`El tema "${tema}" no existe`);
-  }
+  // Normalizamos el nombre a minúsculas
+  const temaNormalizado = tema.toLowerCase();
 
-  if (tituloTema) infoTemas[tema].titulo = tituloTema;
-  if (votos !== undefined) infoTemas[tema].votos = votos;
+  // 1️⃣ Verificamos si el tema existe
+  const selectQuery = `
+    SELECT * FROM temas 
+    WHERE LOWER(titulo) = ?
+  `;
 
-  res.json({
-    mensaje: 'Tema actualizado',
-    tema: infoTemas[tema]
+  db.get(selectQuery, [temaNormalizado], (err, row) => {
+    if (err) {
+      console.error('❌ Error al buscar el tema:', err.message);
+      return res.status(500).json({ error: 'Error al buscar el tema' });
+    }
+
+    if (!row) {
+      return res.status(404).send(`El tema "${tema}" no existe`);
+    }
+
+    // 2️⃣ Construimos la consulta de actualización dinámicamente
+    const updates = [];
+    const params = [];
+
+    if (tituloTema) {
+      updates.push('titulo = ?');
+      params.push(tituloTema.toLowerCase());
+    }
+
+    if (votos !== undefined) {
+      updates.push('votos = ?');
+      params.push(votos);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).send('No se proporcionaron campos para actualizar');
+    }
+
+    const updateQuery = `
+      UPDATE temas SET ${updates.join(', ')} 
+      WHERE id = ?
+    `;
+
+    params.push(row.id); // usamos el id del tema encontrado
+
+    // 3️⃣ Ejecutamos la actualización
+    db.run(updateQuery, params, function (err) {
+      if (err) {
+        console.error('❌ Error al actualizar el tema:', err.message);
+        return res.status(500).json({ error: 'Error al actualizar el tema' });
+      }
+
+      // 4️⃣ Devolvemos el tema actualizado
+      db.get(`
+          SELECT id, titulo, votos 
+          FROM temas 
+          WHERE id = ?
+        `, 
+        [row.id], (err, updatedRow) => {
+        
+          if (err) {
+          console.error('❌ Error al obtener el tema actualizado:', err.message);
+          return res.status(500).json({ error: 'Error al obtener el tema actualizado' });
+        }
+
+        res.json({
+          mensaje: '✅ Tema actualizado',
+          tema: updatedRow
+        });
+      });
+    });
   });
 });
+
 
 
 /**
