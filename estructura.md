@@ -5,15 +5,13 @@ CRUD-Codigos-y-Votos/
 ├── package-lock.json
 ├── /node_modules
 │
-├── /datos                 # aquí guardamos los datos en memoria por ahora
-│    └── temas.js
+├── /datos                
+│    └── db.js
 │
 ├── /routes               # rutas Express
-│    └── temas.js
+│    ├── temas.js
+│    └── subtemas.js
 │
-├── /controllers          # lógica para manejar CRUD y votos
-│    └── temasController.js
 │
 └── /views                # archivos EJS para renderizar páginas
-     ├── index.ejs
-     └── tema.ejs
+     └── index.ejs

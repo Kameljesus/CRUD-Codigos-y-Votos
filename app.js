@@ -1,3 +1,6 @@
+// app.js
+
+
 // Importamos Express
 const express = require('express');
 
@@ -5,10 +8,11 @@ const express = require('express');
 const app = express();
 
 // Importamos los datos de los temas y subtemas:
-const {infoTemas} = require('./datos/temas.js');
+const {infoTemas} = require('./datos/db.js');
 
 // Puerto
 const PORT = 3000;
+
 
 // Middleware para archivos estáticos (CSS, JS, imágenes)
 app.use(express.static('public'));
@@ -19,20 +23,18 @@ app.use(express.json());
 // Motor de plantillas EJS
 app.set('view engine', 'ejs');
 
+
 // Importamos routers
-const routerBartending = require('./routes/bartending.js');
-const routerVideojuegos = require('./routes/videojuegos.js');
-const routerCocina = require('./routes/cocina.js');
+const routerTemas = require('./routes/temas.js');
+const routerSubtemas = require('./routes/subtemas.js');
 
-// Ruta principal: renderiza todos los temas principales con sus subtemas
-app.get('/', (req, res) => {
-  res.render('index', { infoTemas });
-});
+// Montamos routers:
+// Rutas principales de temas
+app.use('/', routerTemas);
 
-// Montamos routers
-app.use('/api/bartending', routerBartending);
-app.use('/api/videojuegos', routerVideojuegos);
-app.use('/api/cocina', routerCocina);
+// Rutas de subtemas (dependen de un tema)
+app.use('/:tema', routerSubtemas);
+
 
 // Levantar servidor
 app.listen(PORT, () => {
