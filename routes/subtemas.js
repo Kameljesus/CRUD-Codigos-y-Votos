@@ -5,135 +5,274 @@
 const express = require('express');
 
 // Creamos un router específico para subtemas
-const routerSubtemas = express.Router({ mergeParams: true });
+const routerSubtemas = express.Router({ mergeParams: true }); // 👈 importante para acceder a req.params.tema
 
-// Importamos los datos de los temas
-const { infoTemas } = require('../datos/db.js');
-
+// Importamos la conexión a SQLite
+const db = require('../datos/db.js');
 
 // Middleware
 routerSubtemas.use(express.json());
 
 
 /**
- * GET /:tema/
+ * GET /
  * Devuelve todos los subtemas de un tema.
+ * Ejemplo: GET /temas/bartending/subtemas → devuelve [{ id, titulo, votos }]
  */
 routerSubtemas.get('/', (req, res) => {
-  const tema = req.params.tema.toLowerCase();
+  const temaNormalizado = req.params.tema?.toLowerCase();
 
-  if (!infoTemas[tema]) {
-    return res.status(404).send(`El tema "${tema}" no existe.`);
+  if (!temaNormalizado) {
+    return res.status(400).json({ error: 'Falta el parámetro del tema en la URL' });
   }
 
-  res.json(infoTemas[tema].subtemas);
-});
+  // 1️⃣ Buscamos el tema principal
+  const temaQuery = `
+    SELECT id 
+    FROM temas 
+    WHERE LOWER(titulo) = ?
+  `;
 
+  db.get(temaQuery, [temaNormalizado], (err, tema) => {
+    if (err) {
+      console.error('❌ Error al buscar el tema:', err.message);
+      return res.status(500).json({ error: 'Error al buscar el tema' });
+    }
 
-/**
- * GET /:tema/:subtema
- * Devuelve un subtema específico de un tema.
- */
-routerSubtemas.get('/:subtema', (req, res) => {
-  const tema = req.params.tema.toLowerCase();
-  const subtemaNombre = req.params.subtema.toLowerCase();
+    if (!tema) {
+      return res.status(404).send(`El tema "${temaNormalizado}" no existe.`);
+    }
 
-  if (!infoTemas[tema]) {
-    return res.status(404).send(`El tema "${tema}" no existe.`);
-  }
+    // 2️⃣ Obtenemos todos los subtemas asociados a ese tema
+    const subtemasQuery = `
+      SELECT id, titulo, votos 
+      FROM subtemas 
+      WHERE tema_id = ?
+      ORDER BY votos DESC
+    `;
 
-  const subtema = infoTemas[tema].subtemas.find(
-    s => s.titulo.toLowerCase() === subtemaNombre
-  );
+    db.all(subtemasQuery, [tema.id], (err, rows) => {
+      if (err) {
+        console.error('❌ Error al obtener los subtemas:', err.message);
+        return res.status(500).json({ error: 'Error al obtener los subtemas' });
+      }
 
-  if (!subtema) {
-    return res.status(404).send(`El subtema "${subtemaNombre}" no existe en "${tema}".`);
-  }
-
-  res.json(subtema);
-});
-
-
-/**
- * POST /:tema
- * Crea un subtema nuevo
- */
-routerSubtemas.post('/', (req, res) => {
-  const tema = req.params.tema.toLowerCase();
-  const { tituloSubtema } = req.body;
-
-  if (!infoTemas[tema]) return res.status(404).send('El tema principal no existe');
-  if (!tituloSubtema) return res.status(400).send('Se necesita un título para el subtema');
-
-  const subtemas = infoTemas[tema].subtemas;
-  const idSubtema = subtemas.length + 1;
-
-  const nuevoSubtema = {
-    id: idSubtema,
-    titulo: tituloSubtema,
-    votos: 0
-  };
-
-  subtemas.push(nuevoSubtema);
-
-  res.status(201).json({
-    mensaje: 'Subtema agregado',
-    subtema: nuevoSubtema
+      // 👇 Si se usa EJS, renderizamos una vista
+      res.render('subtemas', { tema: temaNormalizado, subtemas: rows });
+    });
   });
 });
 
 
 /**
- * PUT /:tema/:idSubtema
- * Actualiza un subtema
+ * GET /:subtema
+ * Devuelve un subtema específico de un tema.
+ * Ejemplo: GET /temas/bartending/subtemas/gintonic → devuelve { id, titulo, votos }
+ */
+routerSubtemas.get('/:subtema', (req, res) => {
+  const temaNormalizado = req.params.tema?.toLowerCase();
+  const subtemaNormalizado = req.params.subtema?.toLowerCase();
+
+  if (!temaNormalizado || !subtemaNormalizado) {
+    return res.status(400).json({ error: 'Faltan parámetros en la URL' });
+  }
+
+  const temaQuery = `
+    SELECT id 
+    FROM temas 
+    WHERE LOWER(titulo) = ?
+  `;
+
+  db.get(temaQuery, [temaNormalizado], (err, tema) => {
+    if (err) return res.status(500).json({ error: 'Error al buscar el tema' });
+    if (!tema) return res.status(404).send(`El tema "${temaNormalizado}" no existe.`);
+
+    const subtemaQuery = `
+      SELECT id, titulo, votos 
+      FROM subtemas 
+      WHERE tema_id = ? AND LOWER(titulo) = ?
+    `;
+
+    db.get(subtemaQuery, [tema.id, subtemaNormalizado], (err, subtema) => {
+      if (err) return res.status(500).json({ error: 'Error al buscar el subtema' });
+      if (!subtema) return res.status(404).send(`El subtema "${subtemaNormalizado}" no existe en "${temaNormalizado}".`);
+
+      res.json(subtema);
+    });
+  });
+});
+
+
+/**
+ * POST /
+ * Crea un subtema nuevo dentro de un tema existente.
+ * Ejemplo: POST /temas/bartending/subtemas con body { "tituloSubtema": "cocteles clásicos" }
+ * Devuelve: { mensaje: '✅ Subtema agregado', subtema: { id, titulo, votos } }
+ */
+routerSubtemas.post('/', (req, res) => {
+  const temaNormalizado = req.params.tema?.toLowerCase();
+  const { tituloSubtema } = req.body;
+
+  if (!temaNormalizado) return res.status(400).send('Falta el tema principal en la URL');
+  if (!tituloSubtema) return res.status(400).send('Se necesita un título para el subtema');
+
+  const temaQuery = `
+    SELECT id 
+    FROM temas 
+    WHERE LOWER(titulo) = ?
+  `;
+
+  db.get(temaQuery, [temaNormalizado], (err, tema) => {
+    if (err) return res.status(500).json({ error: 'Error al verificar el tema' });
+    if (!tema) return res.status(404).send('El tema principal no existe');
+
+    const tituloNormalizado = tituloSubtema.toLowerCase();
+
+    const checkQuery = `
+      SELECT id 
+      FROM subtemas 
+      WHERE tema_id = ? AND LOWER(titulo) = ?
+    `;
+
+    db.get(checkQuery, [tema.id, tituloNormalizado], (err, row) => {
+      if (err) return res.status(500).json({ error: 'Error al verificar el subtema' });
+      if (row) return res.status(400).send('El subtema ya existe dentro de este tema');
+
+      const insertQuery = `
+        INSERT INTO subtemas (tema_id, titulo, votos)
+        VALUES (?, ?, 0)
+      `;
+
+      db.run(insertQuery, [tema.id, tituloNormalizado], function (err) {
+        if (err) return res.status(500).json({ error: 'Error al crear el subtema' });
+
+        res.status(201).json({
+          mensaje: '✅ Subtema agregado',
+          subtema: {
+            id: this.lastID,
+            titulo: tituloNormalizado,
+            votos: 0
+          }
+        });
+      });
+    });
+  });
+});
+
+
+/**
+ * PUT /:idSubtema
+ * Actualiza un subtema existente.
+ * Ejemplo: PUT /temas/bartending/subtemas/3 con body { "tituloSubtema": "aperitivos", "votos": 12 }
+ * Devuelve: { mensaje: '✅ Subtema actualizado', subtema: { id, titulo, votos } }
  */
 routerSubtemas.put('/:idSubtema', (req, res) => {
-  const tema = req.params.tema.toLowerCase();
+  const temaNormalizado = req.params.tema?.toLowerCase();
   const { idSubtema } = req.params;
   const { tituloSubtema, votos } = req.body;
 
-  if (!infoTemas[tema]) {
-    return res.status(404).send(`El tema "${tema}" no existe`);
-  }
+  if (!temaNormalizado) return res.status(400).send('Falta el tema principal en la URL');
 
-  const subtemas = infoTemas[tema].subtemas;
-  const subtema = subtemas.find(sub => sub.id == idSubtema);
+  const temaQuery = `
+    SELECT id 
+    FROM temas 
+    WHERE LOWER(titulo) = ?
+  `;
 
-  if (!subtema) {
-    return res.status(404).send(`El subtema con ID ${idSubtema} no existe dentro de "${tema}"`);
-  }
+  db.get(temaQuery, [temaNormalizado], (err, tema) => {
+    if (err) return res.status(500).json({ error: 'Error al verificar el tema' });
+    if (!tema) return res.status(404).send(`El tema "${temaNormalizado}" no existe`);
 
-  if (tituloSubtema) subtema.titulo = tituloSubtema;
-  if (votos !== undefined) subtema.votos = votos;
+    const subtemaQuery = `
+      SELECT * 
+      FROM subtemas 
+      WHERE id = ? AND tema_id = ?
+    `;
 
-  res.json({
-    mensaje: 'Subtema actualizado',
-    subtema
+    db.get(subtemaQuery, [idSubtema, tema.id], (err, subtema) => {
+      if (err) return res.status(500).json({ error: 'Error al buscar el subtema' });
+      if (!subtema) return res.status(404).send(`El subtema con ID ${idSubtema} no existe dentro de "${temaNormalizado}"`);
+
+      const updates = [];
+      const params = [];
+
+      if (tituloSubtema) {
+        updates.push('titulo = ?');
+        params.push(tituloSubtema.toLowerCase());
+      }
+
+      if (votos !== undefined) {
+        updates.push('votos = ?');
+        params.push(votos);
+      }
+
+      if (updates.length === 0) {
+        return res.status(400).send('No se proporcionaron campos para actualizar');
+      }
+
+      const updateQuery = `
+        UPDATE subtemas SET ${updates.join(', ')} 
+        WHERE id = ? AND tema_id = ?
+      `;
+
+      params.push(idSubtema, tema.id);
+
+      db.run(updateQuery, params, function (err) {
+        if (err) return res.status(500).json({ error: 'Error al actualizar el subtema' });
+
+        const getUpdated = `
+          SELECT id, titulo, votos 
+          FROM subtemas 
+          WHERE id = ?
+        `;
+
+        db.get(getUpdated, [idSubtema], (err, updated) => {
+          if (err) return res.status(500).json({ error: 'Error al obtener el subtema actualizado' });
+          res.json({ mensaje: '✅ Subtema actualizado', subtema: updated });
+        });
+      });
+    });
   });
 });
 
 
 /**
- * DELETE /:tema/:idSubtema
- * Elimina un subtema específico de un tema
+ * DELETE /:idSubtema
+ * Elimina un subtema específico de un tema.
+ * Ejemplo: DELETE /temas/bartending/subtemas/2 → elimina el subtema con id 2
  */
 routerSubtemas.delete('/:idSubtema', (req, res) => {
-  const tema = req.params.tema.toLowerCase();
+  const temaNormalizado = req.params.tema?.toLowerCase();
   const { idSubtema } = req.params;
 
-  if (!infoTemas[tema]) {
-    return res.status(404).send(`El tema "${tema}" no existe`);
-  }
+  if (!temaNormalizado) return res.status(400).send('Falta el tema principal en la URL');
 
-  const subtemas = infoTemas[tema].subtemas;
-  const index = subtemas.findIndex(sub => sub.id == idSubtema);
+  const temaQuery = `
+    SELECT id 
+    FROM temas 
+    WHERE LOWER(titulo) = ?
+  `;
 
-  if (index === -1) {
-    return res.status(404).send(`El subtema con ID ${idSubtema} no existe en "${tema}"`);
-  }
+  db.get(temaQuery, [temaNormalizado], (err, tema) => {
+    if (err) return res.status(500).json({ error: 'Error al verificar el tema' });
+    if (!tema) return res.status(404).send(`El tema "${temaNormalizado}" no existe`);
 
-  subtemas.splice(index, 1); // elimina el subtema
-  res.json({ mensaje: `Subtema con ID ${idSubtema} eliminado de "${tema}"` });
+    const deleteQuery = `
+      DELETE 
+      FROM subtemas 
+      WHERE id = ? AND tema_id = ?
+    `;
+
+    db.run(deleteQuery, [idSubtema, tema.id], function (err) {
+      if (err) return res.status(500).json({ error: 'Error al eliminar el subtema' });
+
+      if (this.changes === 0) {
+        return res.status(404).send(`El subtema con ID ${idSubtema} no existe en "${temaNormalizado}"`);
+      }
+
+      res.json({ mensaje: `✅ Subtema con ID ${idSubtema} eliminado de "${temaNormalizado}"` });
+    });
+  });
 });
 
 

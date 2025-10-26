@@ -8,7 +8,7 @@ const express = require('express');
 const routerTemas = express.Router();
 
 // Importamos los datos de los temas
-const db = require('../datos/db'); // Importamos la conexión a SQLite
+const db = require('../datos/db.js'); // Importamos la conexión a SQLite
 
 
 // Middleware para parsear JSON en el body de las solicitudes POST/PUT/PATCH
@@ -49,7 +49,7 @@ routerTemas.get('/:tema', (req, res) => {
   const query = `
     SELECT titulo, votos 
     FROM temas 
-    WHERE titulo = ?
+    WHERE LOWER(titulo) = ?
   `;
 
   db.get(query, [tema], (err, row) => {
@@ -214,17 +214,55 @@ routerTemas.put('/:tema', (req, res) => {
 
 /**
  * DELETE /:tema
- * Elimina un tema completo
+ * Elimina un tema existente por su nombre.
+ * Ejemplo: DELETE /bartending → elimina el tema "bartending" y sus subtemas asociados.
+ * Devuelve: { mensaje: '🗑️ Tema eliminado correctamente' }
  */
 routerTemas.delete('/:tema', (req, res) => {
-  const { tema } = req.params;
+  const { tema } = req.params; // nombre del tema a eliminar
 
-  if (!infoTemas[tema]) {
-    return res.status(404).send(`El tema "${tema}" no existe`);
-  }
+  // Normalizamos el nombre a minúsculas
+  const temaNormalizado = tema.toLowerCase();
 
-  delete infoTemas[tema]; // elimina el tema del objeto
-  res.json({ mensaje: `Tema "${tema}" eliminado correctamente` });
+  // 1️⃣ Verificamos si el tema existe
+  const selectQuery = `
+    SELECT * FROM temas 
+    WHERE LOWER(titulo) = ?
+  `;
+
+  db.get(selectQuery, [temaNormalizado], (err, row) => {
+    if (err) {
+      console.error('❌ Error al buscar el tema:', err.message);
+      return res.status(500).json({ error: 'Error al buscar el tema' });
+    }
+
+    if (!row) {
+      return res.status(404).send(`El tema "${tema}" no existe`);
+    }
+
+    // 2️⃣ Eliminamos el tema (y sus subtemas gracias a ON DELETE CASCADE)
+    const deleteQuery = `
+      DELETE FROM temas 
+      WHERE id = ?
+    `;
+
+    db.run(deleteQuery, [row.id], function (err) {
+      if (err) {
+        console.error('❌ Error al eliminar el tema:', err.message);
+        return res.status(500).json({ error: 'Error al eliminar el tema' });
+      }
+
+      // 3️⃣ Confirmamos la eliminación
+      res.json({
+        mensaje: '🗑️ Tema eliminado correctamente',
+        tema: {
+          id: row.id,
+          titulo: row.titulo,
+          votos: row.votos
+        }
+      });
+    });
+  });
 });
 
 

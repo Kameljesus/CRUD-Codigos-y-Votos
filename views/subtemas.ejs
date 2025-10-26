@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Subtemas de <%= tema %></title>
+  <style>
+    /* === Estilos base === */
+    body {
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: #f4f6f8;
+      margin: 0;
+      padding: 30px;
+    }
+
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 30px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    /* === Botones === */
+    button {
+      background: #007bff;
+      border: none;
+      color: white;
+      padding: 6px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: background 0.2s;
+    }
+
+    button:hover { background: #0056b3; }
+
+    .crear {
+      display: block;
+      margin: 0 auto 25px;
+      background: #28a745;
+      font-weight: bold;
+      padding: 10px 15px;
+    }
+
+    .crear:hover { background: #218838; }
+
+    /* === Subtemas === */
+    .subtema {
+      border: 1px solid #ddd;
+      background: #fafafa;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 15px;
+      transition: background 0.2s;
+    }
+
+    .subtema:hover { background: #f0f8ff; }
+
+    .subtema strong {
+      font-size: 1.1rem;
+      color: #333;
+    }
+
+    .acciones {
+      margin-top: 10px;
+    }
+
+    .acciones button {
+      margin-right: 5px;
+    }
+
+    /* === Volver === */
+    .volver {
+      display: block;
+      text-align: center;
+      margin-top: 20px;
+      color: #007bff;
+      text-decoration: none;
+      font-weight: bold;
+      transition: color 0.2s;
+    }
+
+    .volver:hover {
+      color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>📚 Subtemas de "<%= tema %>"</h1>
+
+  <div class="container">
+    <button class="crear" id="crearSubtemaBtn">+ Crear Subtema</button>
+
+    <div id="subtemasContainer">
+      <% if (subtemas.length === 0) { %>
+        <p style="text-align:center; color:#666;">Aún no hay subtemas creados.</p>
+      <% } else { %>
+        <% subtemas.forEach(sub => { %>
+          <div class="subtema" data-id="<%= sub.id %>">
+            <strong><%= sub.titulo %></strong>
+            <p>Votos: <span class="votos"><%= sub.votos %></span></p>
+            <div class="acciones">
+              <button class="votarSubtema">👍 Votar</button>
+              <button class="editarSubtema">✏️ Editar</button>
+              <button class="eliminarSubtema">🗑️ Eliminar</button>
+            </div>
+          </div>
+        <% }) %>
+      <% } %>
+    </div>
+
+    <a href="/" class="volver">⬅ Volver a Temas</a>
+  </div>
+
+  <script>
+    const tema = "<%= encodeURIComponent(tema) %>";
+
+    // Crear subtema
+    document.getElementById('crearSubtemaBtn').addEventListener('click', async () => {
+      const titulo = prompt('Ingrese el título del nuevo subtema:');
+      if (!titulo) return;
+      try {
+        const res = await fetch(`/temas/${tema}/subtemas`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tituloSubtema: titulo })
+        });
+        if (!res.ok) throw new Error('Error al crear subtema');
+        location.reload();
+      } catch(err) { console.error(err); }
+    });
+
+    // Delegación de eventos para subtemas
+    const container = document.getElementById('subtemasContainer');
+    container.addEventListener('click', async e => {
+      const subDiv = e.target.closest('.subtema');
+      if (!subDiv) return;
+      const id = subDiv.dataset.id;
+      
+      // Votar
+      if (e.target.classList.contains('votarSubtema')) {
+        const votosActuales = parseInt(subDiv.querySelector('.votos').textContent);
+        const res = await fetch(`/temas/${tema}/subtemas/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ votos: votosActuales + 1 })
+        });
+        const data = await res.json();
+        subDiv.querySelector('.votos').textContent = data.subtema.votos;
+      }
+
+      // Editar
+      if (e.target.classList.contains('editarSubtema')) {
+        const nuevoTitulo = prompt('Nuevo título del subtema:', subDiv.querySelector('strong').textContent);
+        if (!nuevoTitulo) return;
+        const res = await fetch(`/temas/${tema}/subtemas/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tituloSubtema: nuevoTitulo })
+        });
+        const data = await res.json();
+        subDiv.querySelector('strong').textContent = data.subtema.titulo;
+      }
+
+      // Eliminar
+      if (e.target.classList.contains('eliminarSubtema')) {
+        if (!confirm('¿Eliminar subtema?')) return;
+        await fetch(`/temas/${tema}/subtemas/${id}`, { method: 'DELETE' });
+        subDiv.remove();
+      }
+    });
+  </script>
+
+</body>
+</html>

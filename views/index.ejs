@@ -4,92 +4,179 @@
   <meta charset="UTF-8">
   <title>Learn It, Love It - Votaciones</title>
   <style>
-    /* Estilos básicos para visualizar mejor */
-    body { font-family: Arial, sans-serif; padding: 20px; }
-    h2 { margin-top: 30px; }
-    .tema { border: 1px solid #ccc; padding: 10px; margin: 10px 0; }
-    .subtema { margin-left: 20px; }
-    button { margin-left: 10px; cursor: pointer; }
+    /* === Estilos base === */
+    body {
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: #f4f6f8;
+      margin: 0;
+      padding: 30px;
+    }
+
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 30px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    /* === Botones === */
+    button {
+      background: #007bff;
+      border: none;
+      color: white;
+      padding: 6px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: background 0.2s;
+    }
+
+    button:hover { background: #0056b3; }
+
+    .crear {
+      display: block;
+      margin: 0 auto 25px;
+      background: #28a745;
+      font-weight: bold;
+      padding: 10px 15px;
+    }
+
+    .crear:hover { background: #218838; }
+
+    /* === Tarjetas de temas === */
+    .tema {
+      border: 1px solid #ddd;
+      background: #fafafa;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 15px;
+      transition: background 0.2s;
+    }
+
+    .tema:hover {
+      background: #f0f8ff;
+    }
+
+    .tema strong {
+      font-size: 1.1rem;
+      color: #333;
+    }
+
+    .acciones {
+      margin-top: 10px;
+    }
+
+    .acciones button {
+      margin-right: 5px;
+    }
+
+    .verSubtemas {
+      background: #6f42c1;
+    }
+
+    .verSubtemas:hover {
+      background: #59359a;
+    }
   </style>
 </head>
 <body>
 
-  <h1>Learn It, Love It - Votaciones</h1>
+  <h1>🌱 Learn It, Love It</h1>
 
-<!-- Sección de Bartending -->
-<h2>Bartending</h2>
-<div id="bartending">
-  <% infoTemas.bartending.forEach(subtema => { %>
-    <div class="tema" data-id="<%= subtema.id %>">
-      <strong><%= subtema.titulo %></strong> - Votos: <span class="votos"><%= subtema.votos %></span>
-      <!-- Botón para votar -->
-      <button class="votar">Votar</button>
+  <div class="container">
+    <!-- Botón para crear un tema nuevo -->
+    <button class="crear" id="crearTemaBtn">+ Crear Nuevo Tema</button>
+
+    <div id="temasContainer">
+      <% temas.forEach(tema => { %>
+        <div class="tema" data-titulo="<%= tema.titulo %>">
+          <strong><%= tema.titulo %></strong>
+          <p>Votos: <span class="votos"><%= tema.votos %></span></p>
+          
+          <div class="acciones">
+            <button class="votarTema">👍 Votar</button>
+            <button class="editarTema">✏️ Editar</button>
+            <button class="eliminarTema">🗑️ Eliminar</button>
+            <a href="/temas/<%= encodeURIComponent(tema.titulo) %>/subtemas">
+              <button class="verSubtemas">📚 Ver Subtemas</button>
+            </a>
+          </div>
+        </div>
+      <% }) %>
     </div>
-  <% }) %>
-</div>
-
-  <hr>
-
-  <!-- Sección de Videojuegos -->
-  <h2>Videojuegos</h2>
-  <div id="videojuegos">
-    <% infoTemas.videojuegos.forEach(subtema => { %>
-      <div class="tema" data-id="<%= subtema.id %>">
-        <strong><%= subtema.titulo %></strong> - Votos: <span class="votos"><%= subtema.votos %></span>
-        <button class="votar-videojuegos">Votar</button>
-      </div>
-    <% }) %>
-  </div>
-
-  <hr>
-
-  <!-- Sección de Cocina -->
-  <h2>Cocina</h2>
-  <div id="cocina">
-    <% infoTemas.cocina.forEach(subtema => { %>
-      <div class="tema" data-id="<%= subtema.id %>">
-        <strong><%= subtema.titulo %></strong> - Votos: <span class="votos"><%= subtema.votos %></span>
-        <button class="votar-cocina">Votar</button>
-      </div>
-    <% }) %>
   </div>
 
   <script>
-    // Función genérica para manejar votaciones
-    function handleVoting(containerId, routePrefix, buttonClass) {
-      const container = document.getElementById(containerId);
+    // Crear tema nuevo
+    document.getElementById('crearTemaBtn').addEventListener('click', async () => {
+      const titulo = prompt('Ingrese el título del nuevo tema:');
+      if (!titulo) return;
+      try {
+        const res = await fetch('/temas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tituloTema: titulo })
+        });
+        if (!res.ok) throw new Error('Error al crear tema');
+        location.reload();
+      } catch(err) { console.error(err); }
+    });
 
-      // Escuchamos clicks en todo el contenedor
-      container.addEventListener('click', async (e) => {
-        if (!e.target.classList.contains(buttonClass)) return;
+    // Delegación de eventos para temas
+    const temasContainer = document.getElementById('temasContainer');
+    temasContainer.addEventListener('click', async (e) => {
+      const temaDiv = e.target.closest('.tema');
+      if (!temaDiv) return;
+      const titulo = temaDiv.dataset.titulo;
+      const tituloEncoded = encodeURIComponent(titulo);
 
-        const temaDiv = e.target.closest('.tema'); // Obtenemos el div del subtema
-        const id = temaDiv.dataset.id;
-
+      // Votar tema
+      if (e.target.classList.contains('votarTema')) {
         try {
-          // Llamamos al endpoint PATCH /:id/votar usando fetch
-          const res = await fetch(`/api/${routePrefix}/${id}/votar`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' }
+          const votosActuales = parseInt(temaDiv.querySelector('.votos').textContent);
+          const res = await fetch(`/temas/${tituloEncoded}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ votos: votosActuales + 1 })
           });
-
-          if (!res.ok) throw new Error('Error al votar');
-
           const data = await res.json();
+          temaDiv.querySelector('.votos').textContent = data.tema.votos;
+        } catch(err) { console.error(err); }
+      }
 
-          // Actualizamos el número de votos en el HTML
-          temaDiv.querySelector('.votos').textContent = data.votos;
+      // Editar tema
+      if (e.target.classList.contains('editarTema')) {
+        const nuevoTitulo = prompt('Nuevo título del tema:', titulo);
+        if (!nuevoTitulo) return;
+        try {
+          const res = await fetch(`/temas/${tituloEncoded}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tituloTema: nuevoTitulo })
+          });
+          const data = await res.json();
+          temaDiv.querySelector('strong').textContent = data.tema.titulo;
+          temaDiv.dataset.titulo = data.tema.titulo;
+        } catch(err) { console.error(err); }
+      }
 
-        } catch (err) {
-          console.error(err);
-        }
-      });
-    }
-
-    // Configuramos votaciones para cada sección
-    handleVoting('bartending', 'bartending', 'votar');
-    handleVoting('videojuegos', 'videojuegos', 'votar-videojuegos');
-    handleVoting('cocina', 'cocina', 'votar-cocina');
+      // Eliminar tema
+      if (e.target.classList.contains('eliminarTema')) {
+        if (!confirm(`¿Eliminar el tema "${titulo}"?`)) return;
+        try {
+          await fetch(`/temas/${tituloEncoded}`, { method: 'DELETE' });
+          temaDiv.remove();
+        } catch(err) { console.error(err); }
+      }
+    });
   </script>
 
 </body>

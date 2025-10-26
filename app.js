@@ -1,42 +1,26 @@
-// app.js
-
-
-// Importamos Express
 const express = require('express');
-
-// Creamos la app
 const app = express();
+const path = require('path');
+const db = require('./datos/db.js'); // tu base de datos SQLite
 
-// Importamos los datos de los temas y subtemas:
-const {infoTemas} = require('./datos/db.js');
-
-// Puerto
-const PORT = 3000;
-
-
-// Middleware para archivos estáticos (CSS, JS, imágenes)
-app.use(express.static('public'));
-
-// Middleware para parsear JSON en POST/PUT/PATCH
-app.use(express.json());
-
-// Motor de plantillas EJS
 app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views')); // carpeta donde está tu .ejs
 
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Importamos routers
-const routerTemas = require('./routes/temas.js');
-const routerSubtemas = require('./routes/subtemas.js');
-
-// Montamos routers:
-// Rutas principales de temas
-app.use('/', routerTemas);
-
-// Rutas de subtemas (dependen de un tema)
-app.use('/:tema', routerSubtemas);
-
-
-// Levantar servidor
-app.listen(PORT, () => {
-  console.log(`Servidor escuchando en http://localhost:${PORT}`);
+// Ruta principal
+app.get('/', (req, res) => {
+  db.all('SELECT * FROM temas ORDER BY votos DESC', (err, temas) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).send('Error al obtener los temas');
+    }
+    res.render('index', { temas }); // <-- aquí pasamos los temas al .ejs
+  });
 });
+
+app.use('/temas', require('./routes/temas'));
+app.use('/temas/:tema/subtemas', require('./routes/subtemas')); // si lo necesitas
+
+app.listen(3000, () => console.log('Servidor escuchando en http://localhost:3000'));
