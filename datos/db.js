@@ -33,6 +33,7 @@ const db = new sqlite3.Database(path.resolve(__dirname, 'database.sqlite'), (err
           tema_id INTEGER NOT NULL,
           titulo TEXT NOT NULL,
           votos INTEGER DEFAULT 0,
+          enlace TEXT NOT NULL,
           FOREIGN KEY (tema_id) REFERENCES temas(id) ON DELETE CASCADE
         )
       `);

@@ -111,6 +111,11 @@
               <button class="votarSubtema">👍 Votar</button>
               <button class="editarSubtema">✏️ Editar</button>
               <button class="eliminarSubtema">🗑️ Eliminar</button>
+              <% if (sub.enlace) { %>
+                <a href="<%= sub.enlace %>" target="_blank">
+                  <button>Ir al enlace</button>
+                </a>
+              <% } %>
             </div>
           </div>
         <% }) %>

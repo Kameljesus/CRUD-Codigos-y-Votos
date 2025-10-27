@@ -1,6 +1,3 @@
-// routes/subtemas.js
-
-
 // Importamos Express
 const express = require('express');
 
@@ -45,7 +42,7 @@ routerSubtemas.get('/', (req, res) => {
 
     // 2️⃣ Obtenemos todos los subtemas asociados a ese tema
     const subtemasQuery = `
-      SELECT id, titulo, votos 
+      SELECT id, titulo, votos, enlace
       FROM subtemas 
       WHERE tema_id = ?
       ORDER BY votos DESC
@@ -88,7 +85,7 @@ routerSubtemas.get('/:subtema', (req, res) => {
     if (!tema) return res.status(404).send(`El tema "${temaNormalizado}" no existe.`);
 
     const subtemaQuery = `
-      SELECT id, titulo, votos 
+      SELECT id, titulo, votos, enlace
       FROM subtemas 
       WHERE tema_id = ? AND LOWER(titulo) = ?
     `;
@@ -104,10 +101,43 @@ routerSubtemas.get('/:subtema', (req, res) => {
 
 
 /**
+ * GET /ver/:subtema
+ * Muestra la página del enlace del subtema
+ */
+routerSubtemas.get('/ver/:subtema', (req, res) => {
+  const temaNormalizado = req.params.tema?.toLowerCase();
+  const subtemaNormalizado = req.params.subtema?.toLowerCase();
+
+  const temaQuery = `SELECT id FROM temas WHERE LOWER(titulo) = ?`;
+
+  db.get(temaQuery, [temaNormalizado], (err, tema) => {
+    if (err || !tema) return res.status(404).send('Tema no encontrado');
+
+    const subtemaQuery = `
+      SELECT titulo, enlace 
+      FROM subtemas 
+      WHERE tema_id = ? AND LOWER(titulo) = ?
+    `;
+
+    db.get(subtemaQuery, [tema.id, subtemaNormalizado], (err, subtema) => {
+      if (err || !subtema) return res.status(404).send('Subtema no encontrado');
+
+      res.render('subtemaEnlace', {
+        tema: temaNormalizado,
+        subtema: subtema.titulo,
+        enlace: subtema.enlace
+      });
+    });
+  });
+});
+
+
+
+/**
  * POST /
  * Crea un subtema nuevo dentro de un tema existente.
  * Ejemplo: POST /temas/bartending/subtemas con body { "tituloSubtema": "cocteles clásicos" }
- * Devuelve: { mensaje: '✅ Subtema agregado', subtema: { id, titulo, votos } }
+ * Devuelve: { mensaje: '✅ Subtema agregado', subtema: { id, titulo, votos, enlace } }
  */
 routerSubtemas.post('/', (req, res) => {
   const temaNormalizado = req.params.tema?.toLowerCase();
@@ -138,12 +168,15 @@ routerSubtemas.post('/', (req, res) => {
       if (err) return res.status(500).json({ error: 'Error al verificar el subtema' });
       if (row) return res.status(400).send('El subtema ya existe dentro de este tema');
 
+      // 👉 Generar enlace
+      const enlace = `/temas/${temaNormalizado}/subtemas/ver/${encodeURIComponent(tituloNormalizado)}`;
+
       const insertQuery = `
-        INSERT INTO subtemas (tema_id, titulo, votos)
-        VALUES (?, ?, 0)
+        INSERT INTO subtemas (tema_id, titulo, votos, enlace)
+        VALUES (?, ?, 0, ?)
       `;
 
-      db.run(insertQuery, [tema.id, tituloNormalizado], function (err) {
+      db.run(insertQuery, [tema.id, tituloNormalizado, enlace], function (err) {
         if (err) return res.status(500).json({ error: 'Error al crear el subtema' });
 
         res.status(201).json({
@@ -151,7 +184,8 @@ routerSubtemas.post('/', (req, res) => {
           subtema: {
             id: this.lastID,
             titulo: tituloNormalizado,
-            votos: 0
+            votos: 0,
+            enlace
           }
         });
       });
@@ -163,8 +197,9 @@ routerSubtemas.post('/', (req, res) => {
 /**
  * PUT /:idSubtema
  * Actualiza un subtema existente.
+ * Cambia también el enlace si se modifica el título.
  * Ejemplo: PUT /temas/bartending/subtemas/3 con body { "tituloSubtema": "aperitivos", "votos": 12 }
- * Devuelve: { mensaje: '✅ Subtema actualizado', subtema: { id, titulo, votos } }
+ * Devuelve: { mensaje: '✅ Subtema actualizado', subtema: { id, titulo, votos, enlace } }
  */
 routerSubtemas.put('/:idSubtema', (req, res) => {
   const temaNormalizado = req.params.tema?.toLowerCase();
@@ -196,9 +231,17 @@ routerSubtemas.put('/:idSubtema', (req, res) => {
       const updates = [];
       const params = [];
 
+      let nuevoTitulo = subtema.titulo;
+
       if (tituloSubtema) {
+        nuevoTitulo = tituloSubtema.toLowerCase();
         updates.push('titulo = ?');
-        params.push(tituloSubtema.toLowerCase());
+        params.push(nuevoTitulo);
+
+        // 👉 Actualizar también el enlace
+        updates.push('enlace = ?');
+        const nuevoEnlace = `/temas/${temaNormalizado}/subtemas/ver/${encodeURIComponent(nuevoTitulo)}`;
+        params.push(nuevoEnlace);
       }
 
       if (votos !== undefined) {
@@ -221,7 +264,7 @@ routerSubtemas.put('/:idSubtema', (req, res) => {
         if (err) return res.status(500).json({ error: 'Error al actualizar el subtema' });
 
         const getUpdated = `
-          SELECT id, titulo, votos 
+          SELECT id, titulo, votos, enlace
           FROM subtemas 
           WHERE id = ?
         `;
