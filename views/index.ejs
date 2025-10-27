@@ -92,7 +92,6 @@
   <h1>🌱 Learn It, Love It</h1>
 
   <div class="container">
-    <!-- Botón para crear un tema nuevo -->
     <button class="crear" id="crearTemaBtn">+ Crear Nuevo Tema</button>
 
     <div id="temasContainer">
@@ -115,6 +114,18 @@
   </div>
 
   <script>
+    const temasContainer = document.getElementById('temasContainer');
+
+    function ordenarTemasPorVotos() {
+      const temasArray = Array.from(temasContainer.children);
+      temasArray.sort((a, b) => {
+        const votosA = parseInt(a.querySelector('.votos').textContent);
+        const votosB = parseInt(b.querySelector('.votos').textContent);
+        return votosB - votosA;
+      });
+      temasArray.forEach(t => temasContainer.appendChild(t));
+    }
+
     // Crear tema nuevo
     document.getElementById('crearTemaBtn').addEventListener('click', async () => {
       const titulo = prompt('Ingrese el título del nuevo tema:');
@@ -131,7 +142,6 @@
     });
 
     // Delegación de eventos para temas
-    const temasContainer = document.getElementById('temasContainer');
     temasContainer.addEventListener('click', async (e) => {
       const temaDiv = e.target.closest('.tema');
       if (!temaDiv) return;
@@ -149,6 +159,7 @@
           });
           const data = await res.json();
           temaDiv.querySelector('.votos').textContent = data.tema.votos;
+          ordenarTemasPorVotos();
         } catch(err) { console.error(err); }
       }
 
@@ -177,6 +188,9 @@
         } catch(err) { console.error(err); }
       }
     });
+
+    // Orden inicial
+    ordenarTemasPorVotos();
   </script>
 
 </body>

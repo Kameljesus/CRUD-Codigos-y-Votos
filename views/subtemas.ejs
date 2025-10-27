@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <title>Subtemas de <%= tema %></title>
   <style>
-    /* === Estilos base === */
     body {
       font-family: "Segoe UI", Arial, sans-serif;
       background: #f4f6f8;
@@ -27,7 +26,6 @@
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
 
-    /* === Botones === */
     button {
       background: #007bff;
       border: none;
@@ -51,7 +49,6 @@
 
     .crear:hover { background: #218838; }
 
-    /* === Subtemas === */
     .subtema {
       border: 1px solid #ddd;
       background: #fafafa;
@@ -76,7 +73,6 @@
       margin-right: 5px;
     }
 
-    /* === Volver === */
     .volver {
       display: block;
       text-align: center;
@@ -112,9 +108,7 @@
               <button class="editarSubtema">✏️ Editar</button>
               <button class="eliminarSubtema">🗑️ Eliminar</button>
               <% if (sub.enlace) { %>
-                <a href="<%= sub.enlace %>" target="_blank">
-                  <button>Ir al enlace</button>
-                </a>
+                <a href="<%= sub.enlace %>"><button>Ir al enlace</button></a>
               <% } %>
             </div>
           </div>
@@ -127,6 +121,17 @@
 
   <script>
     const tema = "<%= encodeURIComponent(tema) %>";
+    const container = document.getElementById('subtemasContainer');
+
+    function ordenarSubtemasPorVotos() {
+      const subArray = Array.from(container.children);
+      subArray.sort((a, b) => {
+        const votosA = parseInt(a.querySelector('.votos').textContent);
+        const votosB = parseInt(b.querySelector('.votos').textContent);
+        return votosB - votosA;
+      });
+      subArray.forEach(s => container.appendChild(s));
+    }
 
     // Crear subtema
     document.getElementById('crearSubtemaBtn').addEventListener('click', async () => {
@@ -143,13 +148,12 @@
       } catch(err) { console.error(err); }
     });
 
-    // Delegación de eventos para subtemas
-    const container = document.getElementById('subtemasContainer');
+    // Delegación de eventos
     container.addEventListener('click', async e => {
       const subDiv = e.target.closest('.subtema');
       if (!subDiv) return;
       const id = subDiv.dataset.id;
-      
+
       // Votar
       if (e.target.classList.contains('votarSubtema')) {
         const votosActuales = parseInt(subDiv.querySelector('.votos').textContent);
@@ -160,6 +164,7 @@
         });
         const data = await res.json();
         subDiv.querySelector('.votos').textContent = data.subtema.votos;
+        ordenarSubtemasPorVotos();
       }
 
       // Editar
@@ -182,6 +187,9 @@
         subDiv.remove();
       }
     });
+
+    // Orden inicial
+    ordenarSubtemasPorVotos();
   </script>
 
 </body>
