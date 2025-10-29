@@ -5,7 +5,7 @@ const express = require('express');
 const routerSubtemas = express.Router({ mergeParams: true }); // 👈 importante para acceder a req.params.tema
 
 // Importamos la conexión a SQLite
-const db = require('../datos/db.js');
+const db = require('../model/db.js');
 
 // Middleware
 routerSubtemas.use(express.json());

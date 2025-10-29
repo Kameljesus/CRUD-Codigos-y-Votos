@@ -8,7 +8,7 @@ const express = require('express');
 const routerTemas = express.Router();
 
 // Importamos los datos de los temas
-const db = require('../datos/db.js'); // Importamos la conexión a SQLite
+const db = require('../model/db.js'); // Importamos la conexión a SQLite
 
 
 // Middleware para parsear JSON en el body de las solicitudes POST/PUT/PATCH

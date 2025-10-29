@@ -1,7 +1,7 @@
 const express = require('express');
 const app = express();
 const path = require('path');
-const db = require('./datos/db.js'); // tu base de datos SQLite
+const db = require('./model/db.js'); // tu base de datos SQLite
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views')); // carpeta donde está tu .ejs
@@ -20,7 +20,7 @@ app.get('/', (req, res) => {
   });
 });
 
-app.use('/temas', require('./routes/temas'));
-app.use('/temas/:tema/subtemas', require('./routes/subtemas')); // si lo necesitas
+app.use('/temas', require('./controllers/temas.js'));
+app.use('/temas/:tema/subtemas', require('./controllers/subtemas.js')); // si lo necesitas
 
 app.listen(3000, () => console.log('Servidor escuchando en http://localhost:3000'));
