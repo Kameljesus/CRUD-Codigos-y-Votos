@@ -31,6 +31,7 @@ Crear una aplicación que permita:
 
 ## 📂 Estructura real del proyecto
 
+```text
 CRUD-Codigos-y-Votos/
 │
 ├── app.js
@@ -62,4 +63,6 @@ CRUD-Codigos-y-Votos/
     │   └── Vista de subtemas por tema
     └── subtemaEnlace.ejs
         └── Vista de enlaces asociados a un subtema
+```
+
 
