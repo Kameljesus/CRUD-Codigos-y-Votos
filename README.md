@@ -33,19 +33,33 @@ Crear una aplicación que permita:
 
 CRUD-Codigos-y-Votos/
 │
-├── app.js # Archivo principal del servidor
-├── package.json # Dependencias y scripts
-├── estructura.md # Explicación de la estructura del proyecto
-├── info_challenge.md # Consigna original del challenge
+├── app.js
+│   └── Archivo principal del servidor
+│
+├── package.json
+│   └── Dependencias y scripts del proyecto
+│
+├── estructura.md
+│   └── Explicación de la estructura del proyecto
+│
+├── info_challenge.md
+│   └── Consigna original del challenge
 │
 ├── controllers/
-│ ├── temas.js # Lógica CRUD de temas
-│ └── subtemas.js # Lógica CRUD de subtemas y enlaces
+│   ├── temas.js
+│   │   └── Lógica CRUD de temas
+│   └── subtemas.js
+│       └── Lógica CRUD de subtemas y enlaces
 │
 ├── model/
-│ └── db.js # Conexión y manejo de SQLite
+│   └── db.js
+│       └── Conexión y manejo de la base de datos SQLite
 │
-├── views/
-│ ├── index.ejs # Vista principal con listado de temas
-│ ├── subtemas.ejs # Vista de subtemas por tema
-│ └── subtemaEnlace.ejs # Vista de enlaces asociados
+└── views/
+    ├── index.ejs
+    │   └── Vista principal con listado de temas
+    ├── subtemas.ejs
+    │   └── Vista de subtemas por tema
+    └── subtemaEnlace.ejs
+        └── Vista de enlaces asociados a un subtema
+
