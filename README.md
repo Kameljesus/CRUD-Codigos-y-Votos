@@ -65,4 +65,84 @@ CRUD-Codigos-y-Votos/
         └── Vista de enlaces asociados a un subtema
 ```
 
+---
+
+## 🧩 Arquitectura
+
+El proyecto sigue el patrón **MVC**:
+
+### 🔹 Modelo
+- `model/db.js`
+- Maneja la conexión con SQLite
+- Define y ejecuta las queries SQL
+- Centraliza el acceso a la base de datos
+
+### 🔹 Controladores
+- `controllers/temas.js`
+- `controllers/subtemas.js`
+
+Responsabilidades:
+- Procesar requests HTTP
+- Ejecutar operaciones CRUD
+- Llamar al modelo para persistencia
+- Renderizar vistas EJS con datos dinámicos
+
+### 🔹 Vistas
+- Renderizadas del lado del servidor con **EJS**
+- Separación clara entre lógica y presentación
+- Datos inyectados directamente desde Express
+
+---
+
+## 🗄️ Base de datos
+
+- Base de datos: **SQLite**
+- Archivo gestionado desde `db.js`
+- Tablas para:
+  - Temas
+  - Subtemas
+  - Enlaces
+  - Votos
+
+La persistencia permite mantener el estado completo de la aplicación sin depender de memoria.
+
+---
+
+## 🔁 Flujo de funcionamiento
+
+1. El usuario accede a la vista principal (`index.ejs`)
+2. El servidor consulta los temas en SQLite
+3. Los temas se renderizan ordenados (incluyendo votos)
+4. El usuario puede:
+   - Crear nuevos temas
+   - Acceder a subtemas
+   - Agregar enlaces
+   - Votar contenidos
+5. Cada acción impacta directamente en la base de datos
+6. La vista se vuelve a renderizar con los cambios actualizados
+
+---
+
+## 🚀 Cómo ejecutar el proyecto
+
+### 1️⃣ Clonar el repositorio
+
+```bash
+git clone https://github.com/Kameljesus/CRUD-Codigos-y-Votos.git
+cd CRUD-Codigos-y-Votos
+```
+
+### 2️⃣ Instalar dependencias
+
+```bash
+npm install
+```
+
+### 3️⃣ Ejecutar el servidor
+```bash
+node app.js
+```
+
+Abrir en el navegador:
+http://localhost:3000
 
